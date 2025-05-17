@@ -3,10 +3,12 @@
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/evmauth/eip712-authn-ts/test.yml?label=Tests)
 ![GitHub Repo stars](https://img.shields.io/github/stars/evmauth/eip712-authn-ts)
 
+A TypeScript library for secure authentication via [EIP-712] message signing to verify ownership of a wallet address.
+
 ## Features
 
 - **Sign In With Wallet**: Authenticate users via their Ethereum wallets using [EIP-712] typed data signatures
-- **Multi Wallet Support**: First-class support for the [EIP-6963] wallet provider interface standard
+- **Multi Wallet Support**: First-class support for [EIP-1193] and [EIP-6963] wallet provider interface standard
 - **Client Integration**: Simple client library for browser-based applications
 - **Server Verification**: Robust server-side verification of signed messages
 - **Full TypeScript Support**: Complete type safety with TypeScript interfaces for all components
