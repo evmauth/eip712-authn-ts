@@ -20,10 +20,10 @@ export class AuthClient {
             throw new Error('No wallet connected');
         }
 
-        const chainId = await walletConnector.getChainId();
+        const networkId = await walletConnector.getChainId();
         const params = new URLSearchParams();
         params.append('address', address);
-        params.append('networkId', chainId.toString());
+        params.append('networkId', networkId.toString());
 
         const response = await fetch(`${this.config.challengeUrl}?${params}`, {
             method: 'GET',

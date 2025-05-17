@@ -28,18 +28,20 @@ vi.mock('jsonwebtoken', async () => {
 
 describe('AuthServer', () => {
     const jwtSecret = 'test-jwt-secret';
+    const appName = 'Test App';
+    const appVersion = '1';
+    const networkId = 1;
     const domain: EIP712Domain = {
-        name: 'Test App',
-        version: '1',
-        chainId: 1,
-        verifyingContract: '0x0000000000000000000000000000000000000000',
+        name: appName,
+        version: appVersion,
+        chainId: networkId,
     };
     const walletAddress = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
 
     let authServer: AuthServer;
 
     beforeEach(() => {
-        authServer = new AuthServer(jwtSecret, domain);
+        authServer = new AuthServer({ jwtSecret, appName, appVersion });
         vi.clearAllMocks();
     });
 
@@ -54,7 +56,7 @@ describe('AuthServer', () => {
             const mockToken = 'mock-jwt-token';
             vi.mocked(jwt.sign).mockReturnValue(mockToken);
 
-            const challenge = authServer.createChallenge(walletAddress);
+            const challenge = authServer.createChallenge(walletAddress, networkId);
 
             expect(jwt.sign).toHaveBeenCalledWith({ address: walletAddress }, jwtSecret, {
                 expiresIn: 30,
@@ -81,7 +83,7 @@ describe('AuthServer', () => {
 
         it('should use custom expiresIn value when provided', () => {
             const expiresIn = 60;
-            authServer.createChallenge(walletAddress, expiresIn);
+            authServer.createChallenge(walletAddress, networkId, expiresIn);
 
             expect(jwt.sign).toHaveBeenCalledWith({ address: walletAddress }, jwtSecret, {
                 expiresIn,
@@ -131,11 +133,13 @@ describe('AuthServer', () => {
 
 describe('createChallenge function', () => {
     const jwtSecret = 'test-jwt-secret';
+    const appName = 'Test App';
+    const appVersion = '1';
+    const networkId = 1;
     const domain: EIP712Domain = {
-        name: 'Test App',
-        version: '1',
-        chainId: 1,
-        verifyingContract: '0x0000000000000000000000000000000000000000',
+        name: appName,
+        version: appVersion,
+        chainId: networkId,
     };
     const walletAddress = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
 
@@ -182,11 +186,13 @@ describe('createChallenge function', () => {
 
 describe('verifyChallenge function', () => {
     const jwtSecret = 'test-jwt-secret';
+    const appName = 'Test App';
+    const appVersion = '1';
+    const networkId = 1;
     const domain: EIP712Domain = {
-        name: 'Test App',
-        version: '1',
-        chainId: 1,
-        verifyingContract: '0x0000000000000000000000000000000000000000',
+        name: appName,
+        version: appVersion,
+        chainId: networkId,
     };
     const walletAddress = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
     const message: EIP712AuthMessage = {

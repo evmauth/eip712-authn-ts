@@ -2,7 +2,6 @@ export interface EIP712Domain {
     name: string;
     version: string;
     chainId: number;
-    verifyingContract: string;
 }
 
 export interface EIP712AuthChallenge {

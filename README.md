@@ -88,22 +88,24 @@ const app = express();
 app.use(express.json());
 
 // Initialize the auth server with a JWT secret and your domain details
-const authServer = new AuthServer('your-jwt-secret', {
-  name: 'Your App Name',
-  version: '1',
-  chainId: 1, // Ethereum Mainnet
+const authServer = new AuthServer({
+  jwtSecret: 'your_jwt_secret',
+  appName: 'Your App Name',
+  appVersion: '1',
 });
 
 // Challenge endpoint
 app.get('/challenge', (req, res) => {
-  const { address, networkId } = req.query;
+  const address = req.query.address as string;
+  const networkId = Number.parseInt(req.query.networkId as string, 1); // default to Ethereum mainnet
+  const expiresIn = 30; // seconds
   
   if (!address) {
     return res.status(400).json({ error: 'Wallet address is required' });
   }
   
   // Create a challenge for the wallet address
-  const challenge = authServer.createChallenge(address as string, 30); // expires in 30 seconds
+  const challenge = authServer.createChallenge(address, networkId, expiresIn);
   
   res.json(challenge);
 });
