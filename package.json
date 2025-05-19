@@ -1,20 +1,20 @@
 {
     "name": "@evmauth/eip712-authn",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "TypeScript library for secure authentication via EIP-712 message signing to verify ownership of a wallet address.",
     "type": "module",
     "exports": {
         ".": {
-            "import": "./dist/esm/index.js",
-            "require": "./dist/cjs/index.js"
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
         },
         "./client": {
-            "import": "./dist/esm/client/index.js",
-            "require": "./dist/cjs/client/index.js"
+            "import": "./dist/client/index.js",
+            "types": "./dist/client/index.d.ts"
         },
         "./server": {
-            "import": "./dist/esm/server/index.js",
-            "require": "./dist/cjs/server/index.js"
+            "import": "./dist/server/index.js",
+            "types": "./dist/server/index.d.ts"
         }
     },
     "main": "./dist/index.js",
