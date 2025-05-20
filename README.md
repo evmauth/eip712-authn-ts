@@ -121,17 +121,17 @@ app.post('/auth', (req, res) => {
     return res.status(400).json({ error: 'Missing signature or message' });
   }
   
-  // Verify the signed challenge
-  const isValid = authServer.verifyChallenge(message, signedMessage);
+  // Verify the signed challenge and extract the wallet address
+  const address = authServer.verifyChallenge(message, signedMessage);
   
-  if (isValid) {
-    // Create a session or JWT token for the authenticated user
-    // ...
-    
-    res.json({ success: true });
-  } else {
+  if (!address) {
     res.status(401).json({ error: 'Invalid signature' });
   }
+
+  // Create a session or JWT token for the authenticated user
+  // ...
+
+  res.json({ success: true });
 });
 
 app.listen(3000, () => {
