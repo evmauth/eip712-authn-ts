@@ -1,6 +1,6 @@
 {
     "name": "@evmauth/eip712-authn",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "description": "TypeScript library for secure authentication via EIP-712 message signing to verify ownership of a wallet address.",
     "type": "module",
     "exports": {
