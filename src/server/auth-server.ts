@@ -26,7 +26,7 @@ export class AuthServer {
         );
     }
 
-    verifyChallenge(message: EIP712AuthMessage, signedMessage: string): boolean {
+    verifyChallenge(message: EIP712AuthMessage, signedMessage: string): string | null {
         return verifyChallenge(message, signedMessage, this.config.jwtSecret);
     }
 }
@@ -63,15 +63,15 @@ export function verifyChallenge(
     message: EIP712AuthMessage,
     signedMessage: string,
     jwtSecret: string
-): boolean {
+): string | null {
     if (!message?.domain || !message?.auth) {
-        return false;
+        return null;
     }
 
     const expectedAddress: string = jwt.verify(message.auth.challenge, jwtSecret) as string;
 
     if (!expectedAddress || !isAddress(expectedAddress)) {
-        return false;
+        return null;
     }
 
     const signerAddress = verifyTypedData(
@@ -82,8 +82,12 @@ export function verifyChallenge(
     );
 
     if (!signerAddress || !isAddress(signerAddress)) {
-        return false;
+        return null;
     }
 
-    return signerAddress.toLowerCase() === expectedAddress.toLowerCase();
+    if (signerAddress.toLowerCase() !== expectedAddress.toLowerCase()) {
+        return null;
+    }
+
+    return signerAddress;
 }

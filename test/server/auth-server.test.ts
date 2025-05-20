@@ -126,7 +126,7 @@ describe('AuthServer', () => {
                 message.auth,
                 signedMessage
             );
-            expect(result).toBe(true);
+            expect(result).toBe(walletAddress);
         });
     });
 });
@@ -219,7 +219,7 @@ describe('verifyChallenge function', () => {
         vi.clearAllMocks();
     });
 
-    it('should return true when challenge is valid and addresses match', () => {
+    it('should return address when challenge is valid and addresses match', () => {
         vi.mocked(jwt.verify).mockReturnValue(walletAddress);
         vi.mocked(ethers.isAddress).mockReturnValue(true);
         vi.mocked(ethers.verifyTypedData).mockReturnValue(walletAddress);
@@ -234,43 +234,43 @@ describe('verifyChallenge function', () => {
             message.auth,
             signedMessage
         );
-        expect(result).toBe(true);
+        expect(result).toBe(walletAddress);
     });
 
-    it('should return false when message is invalid', () => {
+    it('should return null when message is invalid', () => {
         const result = verifyChallenge({} as EIP712AuthMessage, signedMessage, jwtSecret);
-        expect(result).toBe(false);
+        expect(result).toBe(null);
     });
 
-    it('should return false when JWT verification fails', () => {
+    it('should return null when JWT verification fails', () => {
         // Looking at the implementation, we need to return undefined to simulate JWT verification failure
         vi.mocked(jwt.verify).mockReturnValue(undefined);
 
         const result = verifyChallenge(message, signedMessage, jwtSecret);
 
-        expect(result).toBe(false);
+        expect(result).toBe(null);
     });
 
-    it('should return false when JWT payload is not a valid address', () => {
+    it('should return null when JWT payload is not a valid address', () => {
         vi.mocked(jwt.verify).mockReturnValue('not-an-address');
         vi.mocked(ethers.isAddress).mockReturnValue(false);
 
         const result = verifyChallenge(message, signedMessage, jwtSecret);
 
-        expect(result).toBe(false);
+        expect(result).toBe(null);
     });
 
-    it('should return false when verifyTypedData returns invalid address', () => {
+    it('should return null when verifyTypedData returns invalid address', () => {
         vi.mocked(jwt.verify).mockReturnValue(walletAddress);
         vi.mocked(ethers.isAddress).mockReturnValueOnce(true).mockReturnValueOnce(false);
         vi.mocked(ethers.verifyTypedData).mockReturnValue('invalid-address');
 
         const result = verifyChallenge(message, signedMessage, jwtSecret);
 
-        expect(result).toBe(false);
+        expect(result).toBe(null);
     });
 
-    it('should return false when addresses do not match', () => {
+    it('should return null when addresses do not match', () => {
         const differentAddress = '0x742d35Cc6634C0532925a3b844Bc454e4438f44e';
         vi.mocked(jwt.verify).mockReturnValue(walletAddress);
         vi.mocked(ethers.isAddress).mockReturnValue(true);
@@ -278,6 +278,6 @@ describe('verifyChallenge function', () => {
 
         const result = verifyChallenge(message, signedMessage, jwtSecret);
 
-        expect(result).toBe(false);
+        expect(result).toBe(null);
     });
 });
