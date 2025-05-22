@@ -50,32 +50,32 @@ export function createChallenge(
             Authentication: [{ name: 'challenge', type: 'string' }],
         },
         primaryType: 'Authentication',
-        auth: {
+        message: {
             challenge: token,
         },
     };
 }
 
 export function verifyChallenge(
-    message: EIP712AuthMessage,
-    signedMessage: string,
+    unsigned: EIP712AuthMessage,
+    signed: string,
     jwtSecret: string
 ): string | null {
-    if (!message?.domain || !message?.auth) {
+    if (!unsigned?.domain || !unsigned?.message) {
         return null;
     }
 
-    const expectedAddress: string = jwt.verify(message.auth.challenge, jwtSecret) as string;
+    const expectedAddress: string = jwt.verify(unsigned.message.challenge, jwtSecret) as string;
 
     if (!expectedAddress || !isAddress(expectedAddress)) {
         return null;
     }
 
     const signerAddress = verifyTypedData(
-        message.domain,
-        { Authentication: message.types.Authentication },
-        message.auth,
-        signedMessage
+        unsigned.domain,
+        { Authentication: unsigned.types.Authentication },
+        unsigned.message,
+        signed
     );
 
     if (!signerAddress || !isAddress(signerAddress)) {

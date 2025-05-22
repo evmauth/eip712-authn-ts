@@ -15,5 +15,5 @@ export interface EIP712AuthMessage {
         EIP712Domain: Array<{ name: string; type: string }>;
     };
     primaryType: string;
-    auth: EIP712AuthChallenge;
+    message: EIP712AuthChallenge;
 }

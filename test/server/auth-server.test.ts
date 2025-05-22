@@ -72,7 +72,7 @@ describe('AuthServer', () => {
                     Authentication: [{ name: 'challenge', type: 'string' }],
                 },
                 primaryType: 'Authentication',
-                auth: {
+                message: {
                     challenge: mockToken,
                 },
             });
@@ -90,7 +90,7 @@ describe('AuthServer', () => {
 
     describe('verifyChallenge', () => {
         it('should verify challenge signature using the verifyChallenge function', () => {
-            const message: EIP712AuthMessage = {
+            const unsigned: EIP712AuthMessage = {
                 domain,
                 types: {
                     EIP712Domain: [
@@ -101,24 +101,24 @@ describe('AuthServer', () => {
                     Authentication: [{ name: 'challenge', type: 'string' }],
                 },
                 primaryType: 'Authentication',
-                auth: {
+                message: {
                     challenge: 'mock-jwt-token',
                 },
             };
-            const signedMessage = 'signed-message';
+            const signed = 'signed-message';
 
             vi.mocked(jwt.verify).mockReturnValue(walletAddress);
             vi.mocked(ethers.isAddress).mockReturnValue(true);
             vi.mocked(ethers.verifyTypedData).mockReturnValue(walletAddress);
 
-            const result = authServer.verifyChallenge(message, signedMessage);
+            const result = authServer.verifyChallenge(unsigned, signed);
 
-            expect(jwt.verify).toHaveBeenCalledWith(message.auth.challenge, jwtSecret);
+            expect(jwt.verify).toHaveBeenCalledWith(unsigned.message.challenge, jwtSecret);
             expect(ethers.verifyTypedData).toHaveBeenCalledWith(
-                message.domain,
-                { Authentication: message.types.Authentication },
-                message.auth,
-                signedMessage
+                unsigned.domain,
+                { Authentication: unsigned.types.Authentication },
+                unsigned.message,
+                signed
             );
             expect(result).toBe(walletAddress);
         });
@@ -161,7 +161,7 @@ describe('createChallenge function', () => {
                 Authentication: [{ name: 'challenge', type: 'string' }],
             },
             primaryType: 'Authentication',
-            auth: {
+            message: {
                 challenge: mockToken,
             },
         });
@@ -186,7 +186,7 @@ describe('verifyChallenge function', () => {
         chainId: networkId,
     };
     const walletAddress = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
-    const message: EIP712AuthMessage = {
+    const unsigned: EIP712AuthMessage = {
         domain,
         types: {
             EIP712Domain: [
@@ -197,11 +197,11 @@ describe('verifyChallenge function', () => {
             Authentication: [{ name: 'challenge', type: 'string' }],
         },
         primaryType: 'Authentication',
-        auth: {
+        message: {
             challenge: 'mock-jwt-token',
         },
     };
-    const signedMessage = 'signed-message';
+    const signed = 'signed-message';
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -212,21 +212,21 @@ describe('verifyChallenge function', () => {
         vi.mocked(ethers.isAddress).mockReturnValue(true);
         vi.mocked(ethers.verifyTypedData).mockReturnValue(walletAddress);
 
-        const result = verifyChallenge(message, signedMessage, jwtSecret);
+        const result = verifyChallenge(unsigned, signed, jwtSecret);
 
-        expect(jwt.verify).toHaveBeenCalledWith(message.auth.challenge, jwtSecret);
+        expect(jwt.verify).toHaveBeenCalledWith(unsigned.message.challenge, jwtSecret);
         expect(ethers.isAddress).toHaveBeenCalledWith(walletAddress);
         expect(ethers.verifyTypedData).toHaveBeenCalledWith(
-            message.domain,
-            { Authentication: message.types.Authentication },
-            message.auth,
-            signedMessage
+            unsigned.domain,
+            { Authentication: unsigned.types.Authentication },
+            unsigned.message,
+            signed
         );
         expect(result).toBe(walletAddress);
     });
 
     it('should return null when message is invalid', () => {
-        const result = verifyChallenge({} as EIP712AuthMessage, signedMessage, jwtSecret);
+        const result = verifyChallenge({} as EIP712AuthMessage, signed, jwtSecret);
         expect(result).toBe(null);
     });
 
@@ -234,7 +234,7 @@ describe('verifyChallenge function', () => {
         // Looking at the implementation, we need to return undefined to simulate JWT verification failure
         vi.mocked(jwt.verify).mockReturnValue(undefined);
 
-        const result = verifyChallenge(message, signedMessage, jwtSecret);
+        const result = verifyChallenge(unsigned, signed, jwtSecret);
 
         expect(result).toBe(null);
     });
@@ -243,7 +243,7 @@ describe('verifyChallenge function', () => {
         vi.mocked(jwt.verify).mockReturnValue('not-an-address');
         vi.mocked(ethers.isAddress).mockReturnValue(false);
 
-        const result = verifyChallenge(message, signedMessage, jwtSecret);
+        const result = verifyChallenge(unsigned, signed, jwtSecret);
 
         expect(result).toBe(null);
     });
@@ -253,7 +253,7 @@ describe('verifyChallenge function', () => {
         vi.mocked(ethers.isAddress).mockReturnValueOnce(true).mockReturnValueOnce(false);
         vi.mocked(ethers.verifyTypedData).mockReturnValue('invalid-address');
 
-        const result = verifyChallenge(message, signedMessage, jwtSecret);
+        const result = verifyChallenge(unsigned, signed, jwtSecret);
 
         expect(result).toBe(null);
     });
@@ -264,7 +264,7 @@ describe('verifyChallenge function', () => {
         vi.mocked(ethers.isAddress).mockReturnValue(true);
         vi.mocked(ethers.verifyTypedData).mockReturnValue(differentAddress);
 
-        const result = verifyChallenge(message, signedMessage, jwtSecret);
+        const result = verifyChallenge(unsigned, signed, jwtSecret);
 
         expect(result).toBe(null);
     });
