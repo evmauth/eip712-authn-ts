@@ -1,4 +1,4 @@
-export { WalletConnector } from './wallet-connector.js';
+export { WalletConnector, walletConnector } from './wallet-connector.js';
 export { AuthClient } from './auth-client.js';
 export type { AuthClientConfig } from './auth-client.js';
 export type {
