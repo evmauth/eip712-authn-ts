@@ -47,10 +47,7 @@ export function createChallenge(
                 { name: 'version', type: 'string' },
                 { name: 'chainId', type: 'uint256' },
             ],
-            Authentication: [
-                { name: 'jwt', type: 'string' },
-                { name: 'walletAddress', type: 'address' },
-            ],
+            Authentication: [{ name: 'challenge', type: 'string' }],
         },
         primaryType: 'Authentication',
         auth: {

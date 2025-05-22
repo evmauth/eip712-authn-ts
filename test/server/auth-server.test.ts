@@ -69,10 +69,7 @@ describe('AuthServer', () => {
                         { name: 'version', type: 'string' },
                         { name: 'chainId', type: 'uint256' },
                     ],
-                    Authentication: [
-                        { name: 'jwt', type: 'string' },
-                        { name: 'walletAddress', type: 'address' },
-                    ],
+                    Authentication: [{ name: 'challenge', type: 'string' }],
                 },
                 primaryType: 'Authentication',
                 auth: {
@@ -96,15 +93,12 @@ describe('AuthServer', () => {
             const message: EIP712AuthMessage = {
                 domain,
                 types: {
-                    Authentication: [
-                        { name: 'jwt', type: 'string' },
-                        { name: 'walletAddress', type: 'address' },
-                    ],
                     EIP712Domain: [
                         { name: 'name', type: 'string' },
                         { name: 'version', type: 'string' },
                         { name: 'chainId', type: 'uint256' },
                     ],
+                    Authentication: [{ name: 'challenge', type: 'string' }],
                 },
                 primaryType: 'Authentication',
                 auth: {
@@ -164,10 +158,7 @@ describe('createChallenge function', () => {
                     { name: 'version', type: 'string' },
                     { name: 'chainId', type: 'uint256' },
                 ],
-                Authentication: [
-                    { name: 'jwt', type: 'string' },
-                    { name: 'walletAddress', type: 'address' },
-                ],
+                Authentication: [{ name: 'challenge', type: 'string' }],
             },
             primaryType: 'Authentication',
             auth: {
@@ -198,15 +189,12 @@ describe('verifyChallenge function', () => {
     const message: EIP712AuthMessage = {
         domain,
         types: {
-            Authentication: [
-                { name: 'jwt', type: 'string' },
-                { name: 'walletAddress', type: 'address' },
-            ],
             EIP712Domain: [
                 { name: 'name', type: 'string' },
                 { name: 'version', type: 'string' },
                 { name: 'chainId', type: 'uint256' },
             ],
+            Authentication: [{ name: 'challenge', type: 'string' }],
         },
         primaryType: 'Authentication',
         auth: {
