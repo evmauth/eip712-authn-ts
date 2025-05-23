@@ -139,6 +139,17 @@ app.listen(3000, () => {
 });
 ```
 
+## Auth Server Errors
+
+All error classes below extend the `AuthError` class, which extends `Error`.
+
+| Error Class | Description                                                                    |
+|-------------|--------------------------------------------------------------------------------|
+| `InvalidJWTError` | The EIP-712 message `challenge` JWT is invalid or expired.                     |
+| `InvalidMessageError` | The unsigned EIP-712 message is invalid or does not match the expected format. |
+| `InvalidSignatureError` | The signed EIP-712 message is invalid or does not match the expected format.   |
+| `SignatureMismatchError` | The EIP-712 message signer address does not match the `challenge` JWT address. |
+
 ## License
 
 The **EVMAuth** TypeScript EIP-712 Authentication is released under the MIT License. See the [LICENSE](LICENSE) file for details.
