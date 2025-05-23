@@ -5,3 +5,10 @@ export type {
     EIP712AuthMessage,
     EIP712AuthChallenge,
 } from '../common/types.js';
+export type {
+    AuthError,
+    InvalidJWTError,
+    InvalidMessageError,
+    InvalidSignatureError,
+    SignatureMismatchError,
+} from './errors.js';

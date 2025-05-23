@@ -1,6 +1,12 @@
 import { isAddress, verifyTypedData } from 'ethers';
 import jwt from 'jsonwebtoken';
 import type { EIP712AuthMessage, EIP712Domain } from '../common/types.js';
+import {
+    InvalidJWTError,
+    InvalidMessageError,
+    InvalidSignatureError,
+    SignatureMismatchError,
+} from './errors.js';
 
 export interface AuthServerConfig {
     jwtSecret: string;
@@ -60,30 +66,39 @@ export function verifyChallenge(
     unsigned: EIP712AuthMessage,
     signed: string,
     jwtSecret: string
-): string | null {
+): string {
     if (!unsigned?.domain || !unsigned?.message) {
-        return null;
+        throw new InvalidMessageError();
     }
 
-    const expectedAddress: string = jwt.verify(unsigned.message.challenge, jwtSecret) as string;
+    let payload: jwt.JwtPayload;
+    try {
+        payload = jwt.verify(unsigned.message.challenge, jwtSecret) as jwt.JwtPayload;
+    } catch (_err) {
+        throw new InvalidJWTError();
+    }
 
+    const expectedAddress = payload?.address;
     if (!expectedAddress || !isAddress(expectedAddress)) {
-        return null;
+        throw new InvalidJWTError('JWT token does not contain a valid address');
     }
 
-    const signerAddress = verifyTypedData(
-        unsigned.domain,
-        { Authentication: unsigned.types.Authentication },
-        unsigned.message,
-        signed
-    );
-
+    let signerAddress: string;
+    try {
+        signerAddress = verifyTypedData(
+            unsigned.domain,
+            { Authentication: unsigned.types.Authentication },
+            unsigned.message,
+            signed
+        );
+    } catch (_err) {
+        throw new InvalidSignatureError();
+    }
     if (!signerAddress || !isAddress(signerAddress)) {
-        return null;
+        throw new InvalidSignatureError('Signature verification did not return a valid address');
     }
-
     if (signerAddress.toLowerCase() !== expectedAddress.toLowerCase()) {
-        return null;
+        throw new SignatureMismatchError();
     }
 
     return signerAddress;
