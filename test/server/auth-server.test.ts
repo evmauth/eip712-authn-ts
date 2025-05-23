@@ -3,26 +3,19 @@ import jwt from 'jsonwebtoken';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EIP712AuthMessage, EIP712Domain } from '../../src/common/types.js';
 import { AuthServer, createChallenge, verifyChallenge } from '../../src/server/auth-server.js';
+import {
+    InvalidJWTError,
+    InvalidMessageError,
+    InvalidSignatureError,
+    SignatureMismatchError,
+} from '../../src/server/errors.js';
 
-// Mock ethers functions
 vi.mock('ethers', async () => {
     const actual = await vi.importActual('ethers');
     return {
         ...(actual as object),
         isAddress: vi.fn(),
         verifyTypedData: vi.fn(),
-    };
-});
-
-// Mock jwt functions
-vi.mock('jsonwebtoken', async () => {
-    const actual = await vi.importActual('jsonwebtoken');
-    return {
-        ...(actual as object),
-        default: {
-            sign: vi.fn(),
-            verify: vi.fn(),
-        },
     };
 });
 
@@ -53,14 +46,9 @@ describe('AuthServer', () => {
 
     describe('createChallenge', () => {
         it('should create a challenge using the createChallenge function', () => {
-            const mockToken = 'mock-jwt-token';
-            vi.mocked(jwt.sign).mockReturnValue(mockToken);
-
             const challenge = authServer.createChallenge(walletAddress, networkId);
 
-            expect(jwt.sign).toHaveBeenCalledWith({ address: walletAddress }, jwtSecret, {
-                expiresIn: 30,
-            });
+            // Verify the structure
             expect(challenge).toEqual({
                 domain,
                 types: {
@@ -73,23 +61,33 @@ describe('AuthServer', () => {
                 },
                 primaryType: 'Authentication',
                 message: {
-                    challenge: mockToken,
+                    challenge: expect.any(String),
                 },
             });
+
+            // Verify the JWT token contains the correct payload
+            const decoded = jwt.verify(challenge.message.challenge, jwtSecret) as jwt.JwtPayload;
+            expect(decoded.address).toBe(walletAddress);
+            expect(decoded.exp).toBeDefined();
+            expect(decoded.iat).toBeDefined();
         });
 
         it('should use custom expiresIn value when provided', () => {
             const expiresIn = 60;
-            authServer.createChallenge(walletAddress, networkId, expiresIn);
+            const challenge = authServer.createChallenge(walletAddress, networkId, expiresIn);
 
-            expect(jwt.sign).toHaveBeenCalledWith({ address: walletAddress }, jwtSecret, {
-                expiresIn,
-            });
+            const decoded = jwt.verify(challenge.message.challenge, jwtSecret) as jwt.JwtPayload;
+            // Check that expiration is approximately 60 seconds from now
+            const expectedExp = Math.floor(Date.now() / 1000) + expiresIn;
+            expect(decoded.exp).toBeDefined();
+            expect(Math.abs((decoded.exp as number) - expectedExp)).toBeLessThan(2); // Allow 2 second tolerance
         });
     });
 
     describe('verifyChallenge', () => {
         it('should verify challenge signature using the verifyChallenge function', () => {
+            const token = jwt.sign({ address: walletAddress }, jwtSecret, { expiresIn: 30 });
+
             const unsigned: EIP712AuthMessage = {
                 domain,
                 types: {
@@ -102,18 +100,16 @@ describe('AuthServer', () => {
                 },
                 primaryType: 'Authentication',
                 message: {
-                    challenge: 'mock-jwt-token',
+                    challenge: token,
                 },
             };
             const signed = 'signed-message';
 
-            vi.mocked(jwt.verify).mockReturnValue(walletAddress);
             vi.mocked(ethers.isAddress).mockReturnValue(true);
             vi.mocked(ethers.verifyTypedData).mockReturnValue(walletAddress);
 
             const result = authServer.verifyChallenge(unsigned, signed);
 
-            expect(jwt.verify).toHaveBeenCalledWith(unsigned.message.challenge, jwtSecret);
             expect(ethers.verifyTypedData).toHaveBeenCalledWith(
                 unsigned.domain,
                 { Authentication: unsigned.types.Authentication },
@@ -142,14 +138,8 @@ describe('createChallenge function', () => {
     });
 
     it('should create a challenge with correct structure', () => {
-        const mockToken = 'mock-jwt-token';
-        vi.mocked(jwt.sign).mockReturnValue(mockToken);
-
         const challenge = createChallenge(walletAddress, jwtSecret, domain);
 
-        expect(jwt.sign).toHaveBeenCalledWith({ address: walletAddress }, jwtSecret, {
-            expiresIn: 30,
-        });
         expect(challenge).toEqual({
             domain,
             types: {
@@ -162,16 +152,23 @@ describe('createChallenge function', () => {
             },
             primaryType: 'Authentication',
             message: {
-                challenge: mockToken,
+                challenge: expect.any(String),
             },
         });
+
+        // Verify JWT content
+        const decoded = jwt.verify(challenge.message.challenge, jwtSecret) as jwt.JwtPayload;
+        expect(decoded.address).toBe(walletAddress);
     });
 
     it('should use custom expiresIn value when provided', () => {
         const expiresIn = 60;
-        createChallenge(walletAddress, jwtSecret, domain, expiresIn);
+        const challenge = createChallenge(walletAddress, jwtSecret, domain, expiresIn);
 
-        expect(jwt.sign).toHaveBeenCalledWith({ address: walletAddress }, jwtSecret, { expiresIn });
+        const decoded = jwt.verify(challenge.message.challenge, jwtSecret) as jwt.JwtPayload;
+        const expectedExp = Math.floor(Date.now() / 1000) + expiresIn;
+        expect(decoded.exp).toBeDefined();
+        expect(Math.abs((decoded.exp as number) - expectedExp)).toBeLessThan(2);
     });
 });
 
@@ -186,21 +183,6 @@ describe('verifyChallenge function', () => {
         chainId: networkId,
     };
     const walletAddress = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
-    const unsigned: EIP712AuthMessage = {
-        domain,
-        types: {
-            EIP712Domain: [
-                { name: 'name', type: 'string' },
-                { name: 'version', type: 'string' },
-                { name: 'chainId', type: 'uint256' },
-            ],
-            Authentication: [{ name: 'challenge', type: 'string' }],
-        },
-        primaryType: 'Authentication',
-        message: {
-            challenge: 'mock-jwt-token',
-        },
-    };
     const signed = 'signed-message';
 
     beforeEach(() => {
@@ -208,13 +190,28 @@ describe('verifyChallenge function', () => {
     });
 
     it('should return address when challenge is valid and addresses match', () => {
-        vi.mocked(jwt.verify).mockReturnValue(walletAddress);
+        const token = jwt.sign({ address: walletAddress }, jwtSecret, { expiresIn: 30 });
+        const unsigned: EIP712AuthMessage = {
+            domain,
+            types: {
+                EIP712Domain: [
+                    { name: 'name', type: 'string' },
+                    { name: 'version', type: 'string' },
+                    { name: 'chainId', type: 'uint256' },
+                ],
+                Authentication: [{ name: 'challenge', type: 'string' }],
+            },
+            primaryType: 'Authentication',
+            message: {
+                challenge: token,
+            },
+        };
+
         vi.mocked(ethers.isAddress).mockReturnValue(true);
         vi.mocked(ethers.verifyTypedData).mockReturnValue(walletAddress);
 
         const result = verifyChallenge(unsigned, signed, jwtSecret);
 
-        expect(jwt.verify).toHaveBeenCalledWith(unsigned.message.challenge, jwtSecret);
         expect(ethers.isAddress).toHaveBeenCalledWith(walletAddress);
         expect(ethers.verifyTypedData).toHaveBeenCalledWith(
             unsigned.domain,
@@ -225,47 +222,144 @@ describe('verifyChallenge function', () => {
         expect(result).toBe(walletAddress);
     });
 
-    it('should return null when message is invalid', () => {
-        const result = verifyChallenge({} as EIP712AuthMessage, signed, jwtSecret);
-        expect(result).toBe(null);
+    it('should throw when message is invalid', () => {
+        expect(() => verifyChallenge({} as EIP712AuthMessage, signed, jwtSecret)).toThrow(
+            InvalidMessageError
+        );
     });
 
-    it('should return null when JWT verification fails', () => {
-        // Looking at the implementation, we need to return undefined to simulate JWT verification failure
-        vi.mocked(jwt.verify).mockReturnValue(undefined);
+    it('should throw when JWT verification fails', () => {
+        const unsigned: EIP712AuthMessage = {
+            domain,
+            types: {
+                EIP712Domain: [
+                    { name: 'name', type: 'string' },
+                    { name: 'version', type: 'string' },
+                    { name: 'chainId', type: 'uint256' },
+                ],
+                Authentication: [{ name: 'challenge', type: 'string' }],
+            },
+            primaryType: 'Authentication',
+            message: {
+                challenge: 'invalid-jwt-token',
+            },
+        };
 
-        const result = verifyChallenge(unsigned, signed, jwtSecret);
-
-        expect(result).toBe(null);
+        expect(() => verifyChallenge(unsigned, signed, jwtSecret)).toThrow(InvalidJWTError);
     });
 
-    it('should return null when JWT payload is not a valid address', () => {
-        vi.mocked(jwt.verify).mockReturnValue('not-an-address');
+    it('should throw when JWT payload is not a valid address', () => {
+        const token = jwt.sign({ address: 'not-an-address' }, jwtSecret, { expiresIn: 30 });
+        const unsigned: EIP712AuthMessage = {
+            domain,
+            types: {
+                EIP712Domain: [
+                    { name: 'name', type: 'string' },
+                    { name: 'version', type: 'string' },
+                    { name: 'chainId', type: 'uint256' },
+                ],
+                Authentication: [{ name: 'challenge', type: 'string' }],
+            },
+            primaryType: 'Authentication',
+            message: {
+                challenge: token,
+            },
+        };
+
         vi.mocked(ethers.isAddress).mockReturnValue(false);
 
-        const result = verifyChallenge(unsigned, signed, jwtSecret);
-
-        expect(result).toBe(null);
+        expect(() => verifyChallenge(unsigned, signed, jwtSecret)).toThrow(InvalidJWTError);
     });
 
-    it('should return null when verifyTypedData returns invalid address', () => {
-        vi.mocked(jwt.verify).mockReturnValue(walletAddress);
+    it('should throw when verifyTypedData returns invalid address', () => {
+        const token = jwt.sign({ address: walletAddress }, jwtSecret, { expiresIn: 30 });
+        const unsigned: EIP712AuthMessage = {
+            domain,
+            types: {
+                EIP712Domain: [
+                    { name: 'name', type: 'string' },
+                    { name: 'version', type: 'string' },
+                    { name: 'chainId', type: 'uint256' },
+                ],
+                Authentication: [{ name: 'challenge', type: 'string' }],
+            },
+            primaryType: 'Authentication',
+            message: {
+                challenge: token,
+            },
+        };
+
         vi.mocked(ethers.isAddress).mockReturnValueOnce(true).mockReturnValueOnce(false);
         vi.mocked(ethers.verifyTypedData).mockReturnValue('invalid-address');
 
-        const result = verifyChallenge(unsigned, signed, jwtSecret);
-
-        expect(result).toBe(null);
+        expect(() => verifyChallenge(unsigned, signed, jwtSecret)).toThrow(InvalidSignatureError);
     });
 
-    it('should return null when addresses do not match', () => {
+    it('should throw when addresses do not match', () => {
         const differentAddress = '0x742d35Cc6634C0532925a3b844Bc454e4438f44e';
-        vi.mocked(jwt.verify).mockReturnValue(walletAddress);
+        const token = jwt.sign({ address: walletAddress }, jwtSecret, { expiresIn: 30 });
+        const unsigned: EIP712AuthMessage = {
+            domain,
+            types: {
+                EIP712Domain: [
+                    { name: 'name', type: 'string' },
+                    { name: 'version', type: 'string' },
+                    { name: 'chainId', type: 'uint256' },
+                ],
+                Authentication: [{ name: 'challenge', type: 'string' }],
+            },
+            primaryType: 'Authentication',
+            message: {
+                challenge: token,
+            },
+        };
+
         vi.mocked(ethers.isAddress).mockReturnValue(true);
         vi.mocked(ethers.verifyTypedData).mockReturnValue(differentAddress);
 
-        const result = verifyChallenge(unsigned, signed, jwtSecret);
+        expect(() => verifyChallenge(unsigned, signed, jwtSecret)).toThrow(SignatureMismatchError);
+    });
 
-        expect(result).toBe(null);
+    it('should throw when JWT is expired', () => {
+        // Create an expired token
+        const token = jwt.sign({ address: walletAddress }, jwtSecret, { expiresIn: -1 });
+        const unsigned: EIP712AuthMessage = {
+            domain,
+            types: {
+                EIP712Domain: [
+                    { name: 'name', type: 'string' },
+                    { name: 'version', type: 'string' },
+                    { name: 'chainId', type: 'uint256' },
+                ],
+                Authentication: [{ name: 'challenge', type: 'string' }],
+            },
+            primaryType: 'Authentication',
+            message: {
+                challenge: token,
+            },
+        };
+
+        expect(() => verifyChallenge(unsigned, signed, jwtSecret)).toThrow(InvalidJWTError);
+    });
+
+    it('should throw when JWT secret is wrong', () => {
+        const token = jwt.sign({ address: walletAddress }, 'different-secret', { expiresIn: 30 });
+        const unsigned: EIP712AuthMessage = {
+            domain,
+            types: {
+                EIP712Domain: [
+                    { name: 'name', type: 'string' },
+                    { name: 'version', type: 'string' },
+                    { name: 'chainId', type: 'uint256' },
+                ],
+                Authentication: [{ name: 'challenge', type: 'string' }],
+            },
+            primaryType: 'Authentication',
+            message: {
+                challenge: token,
+            },
+        };
+
+        expect(() => verifyChallenge(unsigned, signed, jwtSecret)).toThrow(InvalidJWTError);
     });
 });
